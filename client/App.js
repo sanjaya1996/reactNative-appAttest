@@ -8,36 +8,37 @@ export default class App extends React.Component {
     this.state = {loading: false, error: null, success: false};
   }
 
+  authenticate = async appCheckToken => {
+    try {
+      const res = await fetch('http://192.168.8.112:5000/authenticate', {
+        method: 'GET',
+        headers: {
+          'X-Firebase-AppCheck': appCheckToken,
+        },
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Status: 401, User Unauthorized');
+        } else {
+          throw new Error(`Status: ${res.status}`);
+        }
+      }
+
+      this.setState({loading: false, success: true});
+    } catch (err) {
+      this.setState({loading: false, error: err.message});
+    }
+  };
+
   // check connection
   checkConnection = () => {
     this.setState({loading: true, error: null, success: false});
 
-    let appCheckToken = null;
-    let error = null;
-
     AppCheckModule.getToken(
-      token => (appCheckToken = token),
-      err => (error = err),
+      token => this.authenticate(token),
+      err => this.setState({loading: false, error: err}),
     );
-
-    if (error) {
-      this.setState({loading: false, error});
-      return;
-    }
-
-    fetch('http://localhost:5000', {
-      method: 'GET',
-      headers: {
-        'X-Firebase-AppCheck': appCheckToken,
-      },
-    })
-      .then(() => {
-        this.setState({loading: false, success: true});
-      })
-      .catch(error => {
-        console.log(error);
-        this.setState({loading: false, error: error.message});
-      });
   };
 
   // render the app screen
@@ -50,7 +51,7 @@ export default class App extends React.Component {
         </View>
         {loading && <Text>Loading...</Text>}
         {error && <Text style={styles.error}>{error}</Text>}
-        {success && <Text style={styles.success}>Succeeded</Text>}
+        {success && <Text style={styles.success}>App is verified</Text>}
         <View style={styles.footer}>
           <View style={styles.buttonBar}>
             <Button onPress={this.checkConnection} title="Check app" />
